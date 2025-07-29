@@ -62,16 +62,16 @@ def ask_ai(request):
             break
 
     if ia_response is None:
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": texto_transcrito}],
-                max_output_tokens=60,
-
-            )
-            ia_response = response.choices[0].message.content.strip()
-        except Exception as e:
+     try:
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": texto_transcrito}],
+            max_tokens=60,
+        )
+        ia_response = response.choices[0].message.content.strip()
+     except Exception as e:
             return Response({'detail': f'Error con GPT-4o: {str(e)}'}, status=500)
+
 
     try:
         tts_audio_filename = f"response_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.mp3"
