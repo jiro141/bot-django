@@ -11,7 +11,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # === Seguridad ===
 SECRET_KEY = os.getenv('SECRET_KEY', 'inseguro-dev-key')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = [
+    'detipcito.pythonanywhere.com',
+    '127.0.0.1',
+    'localhost',
+]
 
 # === Apps ===
 INSTALLED_APPS = [
