@@ -6,7 +6,6 @@ from datetime import datetime
 from django.http import FileResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.utils.decorators import method_decorator
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
@@ -55,7 +54,6 @@ def ask_ai(request):
     except Exception as e:
         return Response({'detail': f'Error transcribiendo: {str(e)}'}, status=500)
 
-    # Buscar respuesta estática
     static = StaticResponse.objects.all()
     ia_response = None
     for sr in static:
@@ -93,7 +91,7 @@ def ask_ai(request):
         tts_audio_filename=tts_audio_filename
     )
 
-    return FileResponse(tts_audio_path, media_type="audio/mpeg", filename=tts_audio_filename)
+    return FileResponse(open(tts_audio_path, 'rb'), content_type="audio/mpeg", filename=tts_audio_filename)
 
 @api_view(['POST'])
 @parser_classes([JSONParser])
@@ -121,7 +119,7 @@ def text_to_speech(request):
                 tts_audio_filename=tts_audio_filename
             )
 
-            return FileResponse(tts_audio_path, media_type="audio/mpeg", filename=tts_audio_filename)
+            return FileResponse(open(tts_audio_path, 'rb'), content_type="audio/mpeg", filename=tts_audio_filename)
         except Exception as e:
             return Response({'detail': f'Error generando audio: {str(e)}'}, status=500)
     return Response(serializer.errors, status=400)
@@ -136,7 +134,7 @@ def get_audio_from_question(request):
     filepath = os.path.join(RESPONSE_DIR, filename)
     if not os.path.exists(filepath):
         raise Http404("No se encontró audio para esta pregunta")
-    return FileResponse(filepath, media_type="audio/mpeg", filename=filename)
+    return FileResponse(open(filepath, 'rb'), content_type="audio/mpeg", filename=filename)
 
 @api_view(['POST'])
 @parser_classes([JSONParser])
