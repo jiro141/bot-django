@@ -65,7 +65,9 @@ def ask_ai(request):
         try:
             response = openai.chat.completions.create(
                 model="gpt-4o",
-                messages=[{"role": "user", "content": texto_transcrito}]
+                messages=[{"role": "user", "content": texto_transcrito}],
+                max_output_tokens=60,
+
             )
             ia_response = response.choices[0].message.content.strip()
         except Exception as e:
