@@ -1,12 +1,10 @@
-from django.contrib import admin
-from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
+from django.urls import path
+from . import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('core.urls')),
+    path('ask/', views.ask_ai),
+    path('text-to-speech/', views.text_to_speech),  # 👈 este debe existir
+    path('audio-from-question/', views.get_audio_from_question),
+    path('static-response/', views.create_static_response),
+    path('last-audio-file-path/', views.get_last_audio_path),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
