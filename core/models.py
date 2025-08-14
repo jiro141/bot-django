@@ -16,3 +16,9 @@ class StaticResponse(models.Model):
 
     def __str__(self):
         return self.keyword
+
+class KnowledgeBaseEntry(models.Model):
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    tags = models.CharField(max_length=255, blank=True)  # Para búsquedas rápidas, opcional
+    created_at = models.DateTimeField(auto_now_add=True)

@@ -10,10 +10,13 @@ from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Interaction, StaticResponse
+from .models import Interaction, StaticResponse,KnowledgeBaseEntry
+from django.db import models
 from .serializers import TextToSpeechInputSerializer, StaticResponseCreateSerializer
 from dotenv import load_dotenv
 import openai
+from django.db import connection
+
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -29,6 +32,17 @@ def slugify(text: str) -> str:
     text = re.sub(r'[^\w\s-]', '', text).strip().lower()
     return re.sub(r'[-\s]+', '-', text)
 
+def variantes(palabra):
+    palabra = palabra.strip()
+    if not palabra:
+        return set()
+    variaciones = set([palabra])
+    if palabra.endswith('s'):
+        variaciones.add(palabra[:-1])
+    elif len(palabra) > 1:
+        variaciones.add(palabra + 's')
+    return variaciones
+
 @api_view(['POST'])
 @parser_classes([MultiPartParser])
 def ask_ai(request):
@@ -43,6 +57,7 @@ def ask_ai(request):
     with open(input_path, 'wb') as buffer:
         shutil.copyfileobj(file, buffer)
 
+    # 1️⃣ Transcribir audio con Whisper
     try:
         with open(input_path, "rb") as audio_file:
             transcript = openai.audio.transcriptions.create(
@@ -54,25 +69,50 @@ def ask_ai(request):
     except Exception as e:
         return Response({'detail': f'Error transcribiendo: {str(e)}'}, status=500)
 
-    static = StaticResponse.objects.all()
-    ia_response = None
-    for sr in static:
-        if sr.keyword.lower() in texto_transcrito.lower():
-            ia_response = sr.answer
-            break
+    if not texto_transcrito.strip():
+        return Response({'detail': 'Transcripción vacía.'}, status=400)
 
-    if ia_response is None:
-     try:
+    # 2️⃣ Traer toda la data de la tabla
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT title, content, tags FROM core_knowledgebaseentry")
+            rows = cursor.fetchall()
+    except Exception as e:
+        return Response({'detail': f'Error leyendo BD: {str(e)}'}, status=500)
+
+    # Convertir filas a texto legible
+    context_text = "\n\n".join(
+        f"Título: {row[0]}\nContenido: {row[1]}\nTags: {row[2]}"
+        for row in rows
+    )
+
+    # 3️⃣ GPT filtra y responde
+    print(context_text,"contenido")
+    try:
+        natural_prompt = (
+    "Eres un asistente virtual experto de la empresa. "
+    "Debes responder usando ÚNICAMENTE la información que te proporcionaré a continuación, "
+    "pero puedes parafrasear, resumir, reorganizar y combinar datos para que la respuesta sea clara y completa. "
+    "Puedes usar coincidencias aproximadas, sinónimos y contexto general para encontrar la información más relevante, "
+    "aunque las palabras no sean exactamente iguales a la pregunta. "
+    "No inventes datos que no estén explícitamente presentes en la información, pero sí puedes deducir conclusiones simples "
+    "a partir de lo que se indica. "
+    "Si realmente no hay nada relacionado, responde: 'Lo siento, no tengo esa información en este momento.'\n\n"
+    f"INFORMACIÓN:\n{context_text}\n\n"
+    f"PREGUNTA DEL USUARIO:\n{texto_transcrito}\n\n"
+    "Responde de forma clara, breve y en un tono natural:"
+)
+
         response = openai.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "user", "content": texto_transcrito}],
-            max_tokens=60,
+            messages=[{"role": "user", "content": natural_prompt}],
+            max_tokens=500,
         )
         ia_response = response.choices[0].message.content.strip()
-     except Exception as e:
-            return Response({'detail': f'Error con GPT-4o: {str(e)}'}, status=500)
+    except Exception as e:
+        return Response({'detail': f'Error con GPT en respuesta final: {str(e)}'}, status=500)
 
-
+    # 4️⃣ Convertir respuesta a audio con TTS
     try:
         tts_audio_filename = f"response_{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}.mp3"
         tts_audio_path = os.path.join(RESPONSE_DIR, tts_audio_filename)
@@ -86,6 +126,7 @@ def ask_ai(request):
     except Exception as e:
         return Response({'detail': f'Error generando audio TTS: {str(e)}'}, status=500)
 
+    # 5️⃣ Guardar interacción
     Interaction.objects.create(
         audio_filename=input_filename,
         transcription=texto_transcrito,
@@ -94,6 +135,7 @@ def ask_ai(request):
     )
 
     return FileResponse(open(tts_audio_path, 'rb'), content_type="audio/mpeg", filename=tts_audio_filename)
+
 
 @api_view(['POST'])
 @parser_classes([JSONParser])
