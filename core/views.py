@@ -87,7 +87,7 @@ def ask_ai(request):
     )
 
     # 3️⃣ GPT filtra y responde
-    print(context_text,"contenido")
+    print(texto_transcrito,'este es el texto que se transcribe')
     try:
         natural_prompt = (
     "Eres un asistente virtual experto de la empresa. "
@@ -97,7 +97,7 @@ def ask_ai(request):
     "aunque las palabras no sean exactamente iguales a la pregunta. "
     "No inventes datos que no estén explícitamente presentes en la información, pero sí puedes deducir conclusiones simples "
     "a partir de lo que se indica. "
-    "Si realmente no hay nada relacionado, responde: 'Lo siento, no tengo esa información en este momento.'\n\n"
+    "Si realmente no hay nada relacionado, responde: 'Lo siento, aun estoy en mi proceso de aprendizaje. Si quieres, puedes preguntarme otra cosa.'\n\n"
     f"INFORMACIÓN:\n{context_text}\n\n"
     f"PREGUNTA DEL USUARIO:\n{texto_transcrito}\n\n"
     "Responde de forma clara, breve y en un tono natural:"
